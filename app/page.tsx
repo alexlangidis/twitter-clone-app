@@ -1,12 +1,22 @@
 import MainLayout from "@/components/MainLayout";
-import { Button } from "@/components/ui/button";
-import { signOut } from "@/lib/auth/auth-actions";
 
 export default function Home() {
   return (
     <MainLayout>
-      <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-        <Button onClick={signOut}>Logout</Button>
+      <div className="border-b border-border ">
+        <div className="p-4">
+          <h1 className="text-xl font-bold">Home</h1>
+        </div>
+      </div>
+
+      {/* twitter composer  */}
+
+      {/* twitter feed */}
+
+      <div className="divide-y divide-border">
+        <div className="p-8 text-center text-muted-foreground">
+          <p>No tweets yet. Be the first to tweet!</p>
+        </div>
       </div>
     </MainLayout>
   );

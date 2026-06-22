@@ -14,7 +14,7 @@ datasource db {
 }
 
 model User {
-  id            String    @id
+  id            String    @id @default(uuid())
   name          String
   email         String
   emailVerified Boolean   @default(false)
@@ -26,6 +26,7 @@ model User {
   avatar        String?
   sessions      Session[]
   accounts      Account[]
+  tweets        Tweet[]
 
   @@unique([email])
   @@map("user")
@@ -77,4 +78,20 @@ model Verification {
 
   @@index([identifier])
   @@map("verification")
+}
+
+model Tweet {
+  id        String   @id @default(uuid())
+  content   String
+  imageUrl  String?
+  authorId  String   @map("authorId")
+  parentId  String?  @map("parentId")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  author  User    @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  parent  Tweet?  @relation("TweetReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies Tweet[] @relation("TweetReplies")
+
+  @@map("tweets")
 }

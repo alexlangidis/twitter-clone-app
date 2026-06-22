@@ -1,12 +1,6 @@
 "use client";
 import { authClient } from "@/lib/auth/auth-client";
-import {
-  Divide,
-  HomeIcon,
-  LogOutIcon,
-  MoreHorizontal,
-  User,
-} from "lucide-react";
+import { HomeIcon, LogOutIcon, MoreHorizontal, User } from "lucide-react";
 import Link from "next/link";
 import { Button } from "./ui/button";
 import { usePathname } from "next/navigation";
