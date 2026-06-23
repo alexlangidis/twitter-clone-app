@@ -1,10 +1,11 @@
 import MainLayout from "@/components/MainLayout";
 import Tweet from "@/components/tweets/Tweet";
+import TweetComposer from "@/components/tweets/TweetComposer";
 import { getTweets } from "@/lib/actions/tweets";
 import { getSession } from "@/lib/auth/auth-actions";
 
 export default async function Home() {
-  const session = await getSession()
+  const session = await getSession();
   const tweetsResult = await getTweets();
   const tweets = tweetsResult.success ? tweetsResult.tweets || [] : [];
 
@@ -17,6 +18,8 @@ export default async function Home() {
       </div>
 
       {/* twitter composer  */}
+
+      <TweetComposer user={session?.user} />
 
       {/* twitter feed */}
 

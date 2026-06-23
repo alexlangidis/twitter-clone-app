@@ -1,4 +1,4 @@
-import { formatTimeAgo } from "@/lib/utils";
+import { formatTimeAgo, getInitials } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { Button } from "../ui/button";
 import { Heart, MessageCircle, Repeat2, Share } from "lucide-react";
@@ -20,20 +20,11 @@ type TweetProps = {
 };
 
 export default function Tweet({ tweet, currentUserId }: TweetProps) {
-  function getInitials(name: string) {
-    return name
-      .split(" ")
-      .map((n) => n[0])
-      .join("")
-      .toUpperCase()
-      .slice(0, 2);
-  }
-
   return (
     <div className="p-4 hover:bg-muted/50 cursor-pointer border-b border-border">
       <div className="flex space-x-3">
         <Avatar className="h-10 w-10">
-          <AvatarImage src={tweet.author.avatar ?? ""} />
+          <AvatarImage src={tweet.author.avatar ?? undefined} />
           <AvatarFallback> {getInitials(tweet.author.name)} </AvatarFallback>
         </Avatar>
 
