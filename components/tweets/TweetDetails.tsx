@@ -20,6 +20,7 @@ type TweetDetailsProps = {
     _count?: {
       replies: number;
     };
+    likes: Array<{ id: string; userId: string }>;
   };
   replies: Array<{
     id: string;
@@ -35,6 +36,7 @@ type TweetDetailsProps = {
     _count?: {
       replies: number;
     };
+    likes: Array<{ id: string; userId: string }>;
   }>;
   currentUserId?: string;
 };
@@ -42,6 +44,7 @@ type TweetDetailsProps = {
 export default function TweetDetails({
   tweet,
   replies,
+  currentUserId,
 }: TweetDetailsProps) {
   const router = useRouter();
   return (
@@ -57,11 +60,11 @@ export default function TweetDetails({
           <h1 className="text-xl font-bold">Tweet</h1>
         </Button>
       </div>
-      <Tweet tweet={tweet} />
+      <Tweet tweet={tweet} currentUserId={currentUserId} />
 
       <div className="divide-y divide-border">
         {replies.map((reply, key) => (
-          <Tweet tweet={reply} key={key} />
+          <Tweet tweet={reply} currentUserId={currentUserId} key={key} />
         ))}
 
         {replies.length === 0 && (

@@ -7,6 +7,7 @@ import path from "path";
 import { revalidatePath } from "next/cache";
 import { getSession } from "../auth/auth-actions";
 import { prisma } from "../prisma";
+import { requireUser } from "../auth/require-user";
 
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
 const ALLOWED_IMAGE_TYPES = [
@@ -140,6 +141,12 @@ export async function getTweetById(tweetId: string) {
             replies: true,
           },
         },
+        likes: {
+          select: {
+            id: true,
+            userId: true,
+          },
+        },
       },
     });
 
@@ -148,6 +155,40 @@ export async function getTweetById(tweetId: string) {
     }
 
     return { success: true, tweet };
+  } catch (error) {
+    console.log("Error getting tweet", error);
+    return { success: false, error: "Failed to fetch tweet" };
+  }
+}
+
+export async function likeTweet(tweetId: string) {
+  const user = await requireUser();
+  try {
+    const existingLike = await prisma.like.findUnique({
+      where: {
+        userId_tweetId: {
+          userId: user.id,
+          tweetId,
+        },
+      },
+    });
+
+    if (existingLike) {
+      await prisma.like.delete({
+        where: {
+          id: existingLike.id,
+        },
+      });
+      return { success: true, action: "unlike" };
+    } else {
+      await prisma.like.create({
+        data: {
+          userId: user.id,
+          tweetId,
+        },
+      });
+      return { success: true, action: "like" };
+    }
   } catch (error) {
     console.log("Error getting tweet", error);
     return { success: false, error: "Failed to fetch tweet" };
@@ -172,6 +213,12 @@ export async function getTweetReplies(tweetId: string) {
         _count: {
           select: {
             replies: true,
+          },
+        },
+        likes: {
+          select: {
+            id: true,
+            userId: true,
           },
         },
       },
@@ -199,6 +246,12 @@ export async function getTweets() {
         _count: {
           select: {
             replies: true,
+          },
+        },
+        likes: {
+          select: {
+            id: true,
+            userId: true,
           },
         },
       },

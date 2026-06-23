@@ -4,10 +4,10 @@ import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { Button } from "../ui/button";
 import { Heart, MessageCircle, Repeat2, Share } from "lucide-react";
 import Image from "next/image";
-import Link from "next/link";
-import { useState } from "react";
+import { useState, type MouseEvent } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import TweetComposer from "./TweetComposer";
+import { likeTweet } from "@/lib/actions/tweets";
 
 type TweetProps = {
   tweet: {
@@ -24,16 +24,27 @@ type TweetProps = {
     _count?: {
       replies: number;
     };
+    likes: Array<{ id: string; userId: string }>;
   };
   currentUserId?: string;
 };
 
-export default function Tweet({ tweet }: TweetProps) {
+export default function Tweet({ tweet, currentUserId }: TweetProps) {
   const [showReplyComposer, setShowReplyComposer] = useState<boolean>(false);
   const pathname = usePathname();
   const router = useRouter();
 
-  async function handleReply() {
+  const isLiked = currentUserId
+    ? tweet.likes.some((like) => like.userId === currentUserId)
+    : false;
+
+  function openTweet() {
+    router.push(`/tweet/${tweet.id}`);
+  }
+
+  async function handleReply(e: MouseEvent<HTMLButtonElement>) {
+    e.stopPropagation();
+
     if (pathname === "/") {
       router.push(`/tweet/${tweet.id}`);
     } else {
@@ -45,11 +56,31 @@ export default function Tweet({ tweet }: TweetProps) {
     setShowReplyComposer(false);
   }
 
+  async function handleLike(e: MouseEvent<HTMLButtonElement>) {
+    e.stopPropagation();
+
+    try {
+      const result = await likeTweet(tweet.id);
+      if (result.success) {
+        router.refresh();
+      }
+    } catch (error) {
+      console.log(error);
+    }
+  }
   return (
     <>
-      <Link
-        href={`/tweet/${tweet.id}`}
+      <div
+        role="link"
+        tabIndex={0}
         className="p-4 hover:bg-muted/50 cursor-pointer border-b border-border"
+        onClick={openTweet}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            openTweet();
+          }
+        }}
       >
         <div className="flex space-x-3">
           <Avatar className="h-10 w-10">
@@ -104,8 +135,12 @@ export default function Tweet({ tweet }: TweetProps) {
               <Button
                 variant={"ghost"}
                 className="flex items-center space-x-2 hover:text-red-500"
+                onClick={handleLike}
               >
-                <Heart className="h-4 w-4" /> <span>{2}</span>
+                <Heart
+                  className={`h-4 w-4 ${isLiked ? "text-red-500 fill-red-500" : ""}`}
+                />{" "}
+                <span>{tweet.likes.length}</span>
               </Button>
 
               <Button
@@ -117,10 +152,13 @@ export default function Tweet({ tweet }: TweetProps) {
             </div>
           </div>
         </div>
-      </Link>
+      </div>
 
       {showReplyComposer && (
-        <div className="p-4 border-b border-border">
+        <div
+          className="p-4 border-b border-border"
+          onClick={(e) => e.stopPropagation()}
+        >
           <TweetComposer
             parentId={tweet.id}
             placeholder="Tweet your reply..."
