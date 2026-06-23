@@ -147,6 +147,12 @@ export async function getTweetById(tweetId: string) {
             userId: true,
           },
         },
+        retweets: {
+          select: {
+            id: true,
+            userId: true,
+          },
+        },
       },
     });
 
@@ -195,6 +201,49 @@ export async function likeTweet(tweetId: string) {
   }
 }
 
+export async function retweetTweet(tweetId: string) {
+  const user = await requireUser();
+
+  try {
+    const existingRetweet = await prisma.retweet.findUnique({
+      where: {
+        userId_tweetId: {
+          userId: user.id,
+          tweetId,
+        },
+      },
+    });
+
+    if (existingRetweet) {
+      await prisma.retweet.delete({
+        where: {
+          id: existingRetweet.id,
+        },
+      });
+
+      revalidatePath("/");
+      revalidatePath(`/tweet/${tweetId}`);
+
+      return { success: true, action: "unretweet" };
+    }
+
+    await prisma.retweet.create({
+      data: {
+        userId: user.id,
+        tweetId,
+      },
+    });
+
+    revalidatePath("/");
+    revalidatePath(`/tweet/${tweetId}`);
+
+    return { success: true, action: "retweet" };
+  } catch (error) {
+    console.log("Error retweeting tweet", error);
+    return { success: false, error: "Failed to retweet" };
+  }
+}
+
 export async function getTweetReplies(tweetId: string) {
   try {
     const replies = await prisma.tweet.findMany({
@@ -216,6 +265,12 @@ export async function getTweetReplies(tweetId: string) {
           },
         },
         likes: {
+          select: {
+            id: true,
+            userId: true,
+          },
+        },
+        retweets: {
           select: {
             id: true,
             userId: true,
@@ -249,6 +304,12 @@ export async function getTweets() {
           },
         },
         likes: {
+          select: {
+            id: true,
+            userId: true,
+          },
+        },
+        retweets: {
           select: {
             id: true,
             userId: true,

@@ -7,7 +7,7 @@ import Image from "next/image";
 import { useState, type MouseEvent } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import TweetComposer from "./TweetComposer";
-import { likeTweet } from "@/lib/actions/tweets";
+import { likeTweet, retweetTweet } from "@/lib/actions/tweets";
 
 type TweetProps = {
   tweet: {
@@ -25,6 +25,7 @@ type TweetProps = {
       replies: number;
     };
     likes: Array<{ id: string; userId: string }>;
+    retweets: Array<{ id: string; userId: string }>;
   };
   currentUserId?: string;
 };
@@ -36,6 +37,9 @@ export default function Tweet({ tweet, currentUserId }: TweetProps) {
 
   const isLiked = currentUserId
     ? tweet.likes.some((like) => like.userId === currentUserId)
+    : false;
+  const isRetweeted = currentUserId
+    ? tweet.retweets.some((retweet) => retweet.userId === currentUserId)
     : false;
 
   function openTweet() {
@@ -68,6 +72,20 @@ export default function Tweet({ tweet, currentUserId }: TweetProps) {
       console.log(error);
     }
   }
+
+  async function handleRetweet(e: MouseEvent<HTMLButtonElement>) {
+    e.stopPropagation();
+
+    try {
+      const result = await retweetTweet(tweet.id);
+      if (result.success) {
+        router.refresh();
+      }
+    } catch (error) {
+      console.log(error);
+    }
+  }
+
   return (
     <>
       <div
@@ -128,8 +146,12 @@ export default function Tweet({ tweet, currentUserId }: TweetProps) {
               <Button
                 variant={"ghost"}
                 className="flex items-center space-x-2 hover:text-green-500"
+                onClick={handleRetweet}
               >
-                <Repeat2 className="h-4 w-4" /> <span>{2}</span>
+                <Repeat2
+                  className={`h-4 w-4 ${isRetweeted ? "text-green-500" : ""}`}
+                />
+                <span>{tweet.retweets.length}</span>
               </Button>
 
               <Button
@@ -147,7 +169,7 @@ export default function Tweet({ tweet, currentUserId }: TweetProps) {
                 variant={"ghost"}
                 className="flex items-center space-x-2 hover:text-primary"
               >
-                <Share className="h-4 w-4" /> <span>{2}</span>
+                <Share className="h-4 w-4" />
               </Button>
             </div>
           </div>

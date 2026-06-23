@@ -21,6 +21,7 @@ type TweetDetailsProps = {
       replies: number;
     };
     likes: Array<{ id: string; userId: string }>;
+    retweets: Array<{ id: string; userId: string }>;
   };
   replies: Array<{
     id: string;
@@ -37,6 +38,7 @@ type TweetDetailsProps = {
       replies: number;
     };
     likes: Array<{ id: string; userId: string }>;
+    retweets: Array<{ id: string; userId: string }>;
   }>;
   currentUserId?: string;
 };
