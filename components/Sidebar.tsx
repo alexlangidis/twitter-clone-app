@@ -92,7 +92,10 @@ export default function Sidebar() {
 
       <div className="p-4 border-t border-border">
         <div className="flex items-center space-x-3 p-3 rounded-full hover:bg-muted">
-          <Link href={`/profile/${username}`}>
+          <Link
+            href={`/profile/${username}`}
+            className="flex items-center space-x-3 flex-1 min-w-0"
+          >
             <Avatar className="h-10 w-10">
               <AvatarImage src={session.data?.user.avatar ?? ""} />
               <AvatarFallback>U</AvatarFallback>

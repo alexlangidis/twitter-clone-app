@@ -5,14 +5,16 @@ import { getInitials } from "@/lib/utils";
 import { AvatarImage, AvatarFallback, Avatar } from "../ui/avatar";
 import { Textarea } from "../ui/textarea";
 import { Button } from "../ui/button";
-import { ImageIcon } from "lucide-react";
-import { useState } from "react";
-import { createTweet } from "@/lib/actions/tweets";
+import { ImageIcon, X } from "lucide-react";
+import Image from "next/image";
+import { useRef, useState } from "react";
+import { createReply, createTweet } from "@/lib/actions/tweets";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 
 type TweetComposerProps = {
   user?: SessionUser;
+  parentId?: string;
   placeholder?: string;
   onSubmit?: () => void;
   onCancel?: () => void;
@@ -20,13 +22,57 @@ type TweetComposerProps = {
 
 export default function TweetComposer({
   user,
+  parentId,
   placeholder = "What's Happening",
   onSubmit,
   onCancel,
 }: TweetComposerProps) {
   const [content, setContent] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
+
+  function clearSelectedImage() {
+    if (imagePreviewUrl) {
+      URL.revokeObjectURL(imagePreviewUrl);
+    }
+
+    setSelectedImage(null);
+    setImagePreviewUrl(null);
+
+    if (imageInputRef.current) {
+      imageInputRef.current.value = "";
+    }
+  }
+
+  function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+
+    if (!file) {
+      return;
+    }
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please choose an image file");
+      e.target.value = "";
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Image must be 5MB or smaller");
+      e.target.value = "";
+      return;
+    }
+
+    if (imagePreviewUrl) {
+      URL.revokeObjectURL(imagePreviewUrl);
+    }
+
+    setSelectedImage(file);
+    setImagePreviewUrl(URL.createObjectURL(file));
+  }
 
   async function handleSubmit(e: React.SubmitEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -38,12 +84,24 @@ export default function TweetComposer({
     setIsLoading(true);
 
     try {
-      const result = await createTweet(content.trim());
-      if (result) {
+      const formData = new FormData();
+      formData.append("content", content.trim());
+
+      if (selectedImage) {
+        formData.append("image", selectedImage);
+      }
+
+      const result = parentId
+        ? await createReply(parentId, formData)
+        : await createTweet(formData);
+
+      if (result.success) {
         setContent("");
+        clearSelectedImage();
+        onSubmit?.();
         router.refresh();
       } else {
-        toast.error("Failed to create tweet");
+        toast.error(result.error ?? "Failed to create tweet");
       }
     } catch {
       toast.error("Failed to create tweet");
@@ -74,15 +132,19 @@ export default function TweetComposer({
             <div className="flex justify-between items-center">
               <div className="flex space-x-4">
                 <input
+                  ref={imageInputRef}
                   type="file"
                   className="hidden"
-                  accept="images/*"
+                  accept="image/*"
                   id="image-upload"
+                  onChange={handleImageChange}
                 />
                 <Button
                   variant={"ghost"}
                   type="button"
                   className="text-blue-500 hover:text-blue-600 p-2"
+                  disabled={isLoading}
+                  onClick={() => imageInputRef.current?.click()}
                 >
                   <ImageIcon className="h-5 w-5" />
                 </Button>
@@ -92,17 +154,51 @@ export default function TweetComposer({
                   {content.length}/280
                 </span>
 
-                {/* reply */}
+                {onCancel && (
+                  <Button
+                    type="button"
+                    variant={"outline"}
+                    className="rounded-full px-6"
+                    onClick={onCancel}
+                  >
+                    Cancel
+                  </Button>
+                )}
 
                 <Button
                   type="submit"
                   className="rounded-full px-6"
-                  disabled={!content.trim() || content.length > 280}
+                  disabled={
+                    !content.trim() || content.length > 280 || isLoading
+                  }
                 >
-                  Tweet
+                  {isLoading ? "Tweeting..." : "Tweet"}
                 </Button>
               </div>
             </div>
+
+            {imagePreviewUrl && (
+              <div className="relative overflow-hidden rounded-2xl border border-border">
+                <Image
+                  src={imagePreviewUrl}
+                  alt="Selected upload preview"
+                  width={600}
+                  height={400}
+                  className="max-h-80 w-full object-cover"
+                  unoptimized
+                />
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="icon"
+                  className="absolute right-2 top-2 h-8 w-8 rounded-full"
+                  onClick={clearSelectedImage}
+                  disabled={isLoading}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
           </div>
         </div>
       </form>
