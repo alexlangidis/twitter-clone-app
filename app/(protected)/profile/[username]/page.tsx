@@ -14,7 +14,7 @@ export default async function ProfilePage({
   const username = decodeURIComponent(resolvedParams.username);
 
   const [profileResult, tweetsResult] = await Promise.all([
-    getUserProfile(username),
+    getUserProfile(username, session.id),
     getUserTweets(username),
   ]);
   if (!profileResult.success || !profileResult.user) {

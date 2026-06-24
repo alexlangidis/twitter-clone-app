@@ -29,6 +29,8 @@ model User {
   tweets        Tweet[]
   likes         Like[]
   retweets      Retweet[]
+  following     Follow[]  @relation("following")
+  followers     Follow[]  @relation("followers")
 
   @@unique([email])
   @@map("user")
@@ -124,4 +126,18 @@ model Retweet {
 
   @@unique([userId, tweetId])
   @@map("retweets")
+}
+
+model Follow {
+  id          String   @id @default(uuid())
+  followerId  String   @map("followerId")
+  followingId String   @map("followingId")
+  createdAt   DateTime @default(now())
+
+  follower  User @relation("following", fields: [followerId], references: [id], onDelete: Cascade)
+  following User @relation("followers", fields: [followingId], references: [id], onDelete: Cascade)
+
+  @@unique([followerId, followingId])
+  @@index([followingId])
+  @@map("follows")
 }

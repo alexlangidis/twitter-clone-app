@@ -8,6 +8,7 @@ import { useState, type MouseEvent } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import TweetComposer from "./TweetComposer";
 import { likeTweet, retweetTweet } from "@/lib/actions/tweets";
+import Link from "next/link";
 
 type TweetProps = {
   tweet: {
@@ -108,10 +109,28 @@ export default function Tweet({ tweet, currentUserId }: TweetProps) {
 
           <div className="flex-1 space-y-2">
             <div className="flex items-center space-x-2">
-              <span className="font-semibold">{tweet.author.name}</span>
-              <span className="text-muted-foreground">
-                {tweet.author.username}
-              </span>
+              {tweet.author.username ? (
+                <Link
+                  href={`/profile/${tweet.author.username}`}
+                  className="font-semibold hover:underline"
+                  onClick={(e) => e.stopPropagation()}
+                  onKeyDown={(e) => e.stopPropagation()}
+                >
+                  {tweet.author.name}
+                </Link>
+              ) : (
+                <span className="font-semibold">{tweet.author.name}</span>
+              )}
+              {tweet.author.username && (
+                <Link
+                  href={`/profile/${tweet.author.username}`}
+                  className="text-muted-foreground hover:underline"
+                  onClick={(e) => e.stopPropagation()}
+                  onKeyDown={(e) => e.stopPropagation()}
+                >
+                  @{tweet.author.username}
+                </Link>
+              )}
               <span className="text-muted-foreground">.</span>
               <span className="text-muted-foreground">
                 {formatTimeAgo(tweet.createdAt)}

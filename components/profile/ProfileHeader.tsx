@@ -7,6 +7,9 @@ import { Button } from "../ui/button";
 import { Calendar, Edit } from "lucide-react";
 import { useState } from "react";
 import EditProfileModal from "./EditProfileModal";
+import { toggleFollow } from "@/lib/actions/profile";
+import { useRouter } from "next/navigation";
+import toast from "react-hot-toast";
 
 type ProfileHeaderProps = {
   user: {
@@ -19,7 +22,10 @@ type ProfileHeaderProps = {
     createdAt: Date;
     _count: {
       tweets: number;
+      following: number;
+      followers: number;
     };
+    isFollowing?: boolean;
   };
   currentUser: {
     id: string;
@@ -31,8 +37,34 @@ export default function ProfileHeader({
   currentUser,
 }: ProfileHeaderProps) {
   const [isEditModalOpen, setIsEditModalOpen] = useState<boolean>(false);
+  const [isFollowLoading, setIsFollowLoading] = useState(false);
+  const router = useRouter();
 
   const isOwnProfile = currentUser.id === user.id;
+
+  async function handleFollow() {
+    if (isFollowLoading) {
+      return;
+    }
+
+    setIsFollowLoading(true);
+
+    try {
+      const result = await toggleFollow(user.id);
+
+      if (!result.success) {
+        toast.error(result.error ?? "Failed to update follow");
+        return;
+      }
+
+      router.refresh();
+    } catch (error) {
+      console.error("Error updating follow:", error);
+      toast.error("Failed to update follow");
+    } finally {
+      setIsFollowLoading(false);
+    }
+  }
 
   function formatJoinDate(date: Date) {
     return new Intl.DateTimeFormat("en-US", {
@@ -75,8 +107,13 @@ export default function ProfileHeader({
               Edit Profile
             </Button>
           ) : (
-            <Button variant={"outline"} className="z-2 ">
-              Follow
+            <Button
+              variant={user.isFollowing ? "default" : "outline"}
+              className="z-2 "
+              disabled={isFollowLoading}
+              onClick={handleFollow}
+            >
+              {user.isFollowing ? "Following" : "Follow"}
             </Button>
           )}
         </div>
@@ -98,11 +135,15 @@ export default function ProfileHeader({
 
           <div className="flex items-center space-x-6 text-sm">
             <div className="flex items-center space-x-1">
-              <span className="font-semibold text-foreground">4</span>
+              <span className="font-semibold text-foreground">
+                {user._count.following}
+              </span>
               <span className="text-muted-foreground">Following</span>
             </div>
             <div className="flex items-center space-x-1">
-              <span className="font-semibold text-foreground">4</span>
+              <span className="font-semibold text-foreground">
+                {user._count.followers}
+              </span>
               <span className="text-muted-foreground">Followers</span>
             </div>
             <div className="flex items-center space-x-1">

@@ -227,7 +227,69 @@ export async function getUserTweets(username: string) {
   }
 }
 
-export async function getUserProfile(username: string) {
+export async function toggleFollow(targetUserId: string) {
+  const user = await requireUser();
+
+  if (user.id === targetUserId) {
+    return { success: false, error: "You cannot follow yourself" };
+  }
+
+  try {
+    const targetUser = await prisma.user.findUnique({
+      where: {
+        id: targetUserId,
+      },
+      select: {
+        username: true,
+      },
+    });
+
+    if (!targetUser) {
+      return { success: false, error: "User not found" };
+    }
+
+    const existingFollow = await prisma.follow.findUnique({
+      where: {
+        followerId_followingId: {
+          followerId: user.id,
+          followingId: targetUserId,
+        },
+      },
+    });
+
+    if (existingFollow) {
+      await prisma.follow.delete({
+        where: {
+          id: existingFollow.id,
+        },
+      });
+
+      if (targetUser.username) {
+        revalidatePath(`/profile/${targetUser.username}`);
+      }
+
+      return { success: true, action: "unfollow" };
+    }
+
+    await prisma.follow.create({
+      data: {
+        followerId: user.id,
+        followingId: targetUserId,
+      },
+    });
+
+    if (targetUser.username) {
+      revalidatePath(`/profile/${targetUser.username}`);
+    }
+
+    return { success: true, action: "follow" };
+  } catch (error) {
+    console.error("Error toggling follow:", error);
+    return { success: false, error: "Failed to update follow" };
+  }
+}
+
+export async function getUserProfile(username: string, currentUserId?: string) {
   try {
     const user = await prisma.user.findUnique({
       where: {
@@ -239,8 +301,20 @@ export async function getUserProfile(username: string) {
             tweets: true,
             likes: true,
             retweets: true,
+            following: true,
+            followers: true,
           },
         },
+        followers: currentUserId
+          ? {
+              where: {
+                followerId: currentUserId,
+              },
+              select: {
+                id: true,
+              },
+            }
+          : false,
       },
     });
 
@@ -269,6 +343,7 @@ export async function getUserProfile(username: string) {
         ...user,
         postsCount,
         repliesCount,
+        isFollowing: currentUserId ? user.followers.length > 0 : false,
       },
     };
   } catch (error) {
