@@ -1,8 +1,12 @@
+"use client";
+
 import { getInitials } from "@/lib/utils";
 import Image from "next/image";
 import { Avatar, AvatarImage, AvatarFallback } from "../ui/avatar";
 import { Button } from "../ui/button";
 import { Calendar, Edit } from "lucide-react";
+import { useState } from "react";
+import EditProfileModal from "./EditProfileModal";
 
 type ProfileHeaderProps = {
   user: {
@@ -26,6 +30,8 @@ export default function ProfileHeader({
   user,
   currentUser,
 }: ProfileHeaderProps) {
+  const [isEditModalOpen, setIsEditModalOpen] = useState<boolean>(false);
+
   const isOwnProfile = currentUser.id === user.id;
 
   function formatJoinDate(date: Date) {
@@ -60,7 +66,11 @@ export default function ProfileHeader({
           </Avatar>
 
           {isOwnProfile ? (
-            <Button variant={"outline"} className="z-2">
+            <Button
+              variant={"outline"}
+              className="z-2"
+              onClick={() => setIsEditModalOpen(true)}
+            >
               <Edit className="h-4 w-4 mr-2" />
               Edit Profile
             </Button>
@@ -104,6 +114,12 @@ export default function ProfileHeader({
           </div>
         </div>
       </div>
+
+      <EditProfileModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        user={user}
+      />
     </div>
   );
 }
