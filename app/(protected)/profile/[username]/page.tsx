@@ -1,7 +1,7 @@
 import MainLayout from "@/components/MainLayout";
 import ProfileContent from "@/components/profile/ProfileContent";
 import ProfileHeader from "@/components/profile/ProfileHeader";
-import { getUserProfile } from "@/lib/actions/profile";
+import { getUserProfile, getUserTweets } from "@/lib/actions/profile";
 import { requireUser } from "@/lib/auth/require-user";
 
 export default async function ProfilePage({
@@ -13,7 +13,10 @@ export default async function ProfilePage({
   const resolvedParams = await params;
   const username = decodeURIComponent(resolvedParams.username);
 
-  const [profileResult] = await Promise.all([getUserProfile(username)]);
+  const [profileResult, tweetsResult] = await Promise.all([
+    getUserProfile(username),
+    getUserTweets(username),
+  ]);
   if (!profileResult.success || !profileResult.user) {
     return (
       <MainLayout>
@@ -31,11 +34,20 @@ export default async function ProfilePage({
     ...profileResult.user,
     username: profileResult.user.username ?? username,
   };
+  const tweets = tweetsResult.success ? tweetsResult.tweets || [] : [];
 
   return (
     <MainLayout>
       <ProfileHeader user={user} currentUser={session} />
-      <ProfileContent />
+      <ProfileContent
+        username={username}
+        initialTweets={tweets}
+        tweetCount={user.postsCount}
+        replyCount={user.repliesCount}
+        likeCount={user._count.likes}
+        retweetCount={user._count.retweets}
+        currentUserId={session.id}
+      />
     </MainLayout>
   );
 }
