@@ -1,8 +1,8 @@
 import MainLayout from "@/components/MainLayout";
 import ProfileContent from "@/components/profile/ProfileContent";
 import ProfileHeader from "@/components/profile/ProfileHeader";
-import { getUserProfile, getUserTweets } from "@/lib/actions/profile";
 import { requireUser } from "@/lib/auth/require-user";
+import { getUserProfile, getUserTweets } from "@/lib/data/profile";
 
 export default async function ProfilePage({
   params,

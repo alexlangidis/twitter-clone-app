@@ -2,11 +2,16 @@
 
 import { randomUUID } from "crypto";
 import { mkdir, writeFile } from "fs/promises";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 import path from "path";
 import { requireUser } from "../auth/require-user";
 import { createNotification } from "./notification";
 import { prisma } from "../prisma";
+import {
+  profileTag,
+  TWEETS_TAG,
+  userTweetsTag,
+} from "../data/cache-tags";
 
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
 const ALLOWED_IMAGE_TYPES = [
@@ -79,6 +84,9 @@ export async function uploadProfileImage(
     });
 
     if (updatedUser.username) {
+      updateTag(profileTag(updatedUser.username));
+      updateTag(userTweetsTag(updatedUser.username));
+      updateTag(TWEETS_TAG);
       revalidatePath(`/profile/${updatedUser.username}`);
     }
 
@@ -162,9 +170,16 @@ export async function updateProfile(formData: FormData) {
     });
 
     if (currentUser?.username) {
+      updateTag(profileTag(currentUser.username));
+      updateTag(userTweetsTag(currentUser.username));
       revalidatePath(`/profile/${currentUser.username}`);
     }
 
+    if (updatedUser.username) {
+      updateTag(profileTag(updatedUser.username));
+      updateTag(userTweetsTag(updatedUser.username));
+    }
+    updateTag(TWEETS_TAG);
     revalidatePath(`/profile/${updatedUser.username}`);
     revalidatePath("/");
 
@@ -177,54 +192,6 @@ export async function updateProfile(formData: FormData) {
     }
 
     return { success: false, error: "Failed to update profile" };
-  }
-}
-
-export async function getUserTweets(username: string) {
-  try {
-    const tweets = await prisma.tweet.findMany({
-      where: {
-        parentId: null,
-        author: {
-          username,
-        },
-      },
-      include: {
-        author: {
-          select: {
-            id: true,
-            name: true,
-            username: true,
-            avatar: true,
-          },
-        },
-        _count: {
-          select: {
-            replies: true,
-          },
-        },
-        likes: {
-          select: {
-            id: true,
-            userId: true,
-          },
-        },
-        retweets: {
-          select: {
-            id: true,
-            userId: true,
-          },
-        },
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
-
-    return { success: true, tweets };
-  } catch (error) {
-    console.error("Error fetching user tweets:", error);
-    return { success: false, error: "Failed to fetch user tweets" };
   }
 }
 
@@ -266,6 +233,7 @@ export async function toggleFollow(targetUserId: string) {
       });
 
       if (targetUser.username) {
+        updateTag(profileTag(targetUser.username));
         revalidatePath(`/profile/${targetUser.username}`);
       }
 
@@ -280,6 +248,7 @@ export async function toggleFollow(targetUserId: string) {
     });
 
     if (targetUser.username) {
+      updateTag(profileTag(targetUser.username));
       revalidatePath(`/profile/${targetUser.username}`);
     }
 
@@ -289,68 +258,5 @@ export async function toggleFollow(targetUserId: string) {
   } catch (error) {
     console.error("Error toggling follow:", error);
     return { success: false, error: "Failed to update follow" };
-  }
-}
-
-export async function getUserProfile(username: string, currentUserId?: string) {
-  try {
-    const user = await prisma.user.findUnique({
-      where: {
-        username: username,
-      },
-      include: {
-        _count: {
-          select: {
-            tweets: true,
-            likes: true,
-            retweets: true,
-            following: true,
-            followers: true,
-          },
-        },
-        followers: currentUserId
-          ? {
-              where: {
-                followerId: currentUserId,
-              },
-              select: {
-                id: true,
-              },
-            }
-          : false,
-      },
-    });
-
-    if (!user) {
-      return { success: false, error: "User not found!" };
-    }
-
-    const [postsCount, repliesCount] = await Promise.all([
-      prisma.tweet.count({
-        where: {
-          authorId: user.id,
-          parentId: null,
-        },
-      }),
-      prisma.tweet.count({
-        where: {
-          authorId: user.id,
-          parentId: { not: null },
-        },
-      }),
-    ]);
-
-    return {
-      success: true,
-      user: {
-        ...user,
-        postsCount,
-        repliesCount,
-        isFollowing: currentUserId ? user.followers.length > 0 : false,
-      },
-    };
-  } catch (error) {
-    console.error("Error fetching user profile:", error);
-    return { success: false, error: "Failed to fetch user profile" };
   }
 }

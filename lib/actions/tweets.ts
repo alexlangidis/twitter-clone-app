@@ -4,11 +4,17 @@ import { randomUUID } from "crypto";
 import { mkdir, writeFile } from "fs/promises";
 import { redirect } from "next/navigation";
 import path from "path";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, updateTag } from "next/cache";
 import { getSession } from "../auth/auth-actions";
 import { prisma } from "../prisma";
 import { requireUser } from "../auth/require-user";
 import { createNotification } from "./notification";
+import {
+  TWEETS_TAG,
+  tweetRepliesTag,
+  tweetTag,
+  userTweetsTag,
+} from "../data/cache-tags";
 
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
 const ALLOWED_IMAGE_TYPES = [
@@ -23,6 +29,23 @@ const IMAGE_EXTENSIONS: Record<string, string> = {
   "image/webp": "webp",
   "image/gif": "gif",
 };
+
+function updateTweetReadTags(tweet: {
+  id: string;
+  parentId: string | null;
+  author: { username: string | null };
+}) {
+  updateTag(TWEETS_TAG);
+  updateTag(tweetTag(tweet.id));
+
+  if (tweet.author.username) {
+    updateTag(userTweetsTag(tweet.author.username));
+  }
+
+  if (tweet.parentId) {
+    updateTag(tweetRepliesTag(tweet.parentId));
+  }
+}
 
 async function saveTweetImage(image: File) {
   if (!ALLOWED_IMAGE_TYPES.includes(image.type)) {
@@ -73,6 +96,10 @@ export async function createTweet(formData: FormData) {
       },
     });
 
+    updateTag(TWEETS_TAG);
+    if (session.user.username) {
+      updateTag(userTweetsTag(session.user.username));
+    }
     revalidatePath("/");
 
     return { success: true, tweets };
@@ -125,59 +152,24 @@ export async function createReply(parentId: string, formData: FormData) {
     });
 
     if (originalTweet) {
-      await createNotification("REPLY", originalTweet.authorId, session.user.id, parentId);
+      await createNotification(
+        "REPLY",
+        originalTweet.authorId,
+        session.user.id,
+        parentId,
+      );
     }
 
+    updateTag(TWEETS_TAG);
+    updateTag(tweetTag(parentId));
+    updateTag(tweetRepliesTag(parentId));
+    if (session.user.username) {
+      updateTag(userTweetsTag(session.user.username));
+    }
     return { success: true, tweet: reply };
   } catch (error) {
     console.log("Error creating reply", error);
     return { success: false, error: "Failed to reply" };
-  }
-}
-
-export async function getTweetById(tweetId: string) {
-  try {
-    const tweet = await prisma.tweet.findUnique({
-      where: {
-        id: tweetId,
-      },
-      include: {
-        author: {
-          select: {
-            id: true,
-            name: true,
-            username: true,
-            avatar: true,
-          },
-        },
-        _count: {
-          select: {
-            replies: true,
-          },
-        },
-        likes: {
-          select: {
-            id: true,
-            userId: true,
-          },
-        },
-        retweets: {
-          select: {
-            id: true,
-            userId: true,
-          },
-        },
-      },
-    });
-
-    if (!tweet) {
-      return { success: false, error: "Tweet not found!" };
-    }
-
-    return { success: true, tweet };
-  } catch (error) {
-    console.log("Error getting tweet", error);
-    return { success: false, error: "Failed to fetch tweet" };
   }
 }
 
@@ -194,11 +186,31 @@ export async function likeTweet(tweetId: string) {
     });
 
     if (existingLike) {
+      const tweet = await prisma.tweet.findUnique({
+        where: {
+          id: tweetId,
+        },
+        select: {
+          id: true,
+          parentId: true,
+          author: {
+            select: {
+              username: true,
+            },
+          },
+        },
+      });
+
       await prisma.like.delete({
         where: {
           id: existingLike.id,
         },
       });
+
+      if (tweet) {
+        updateTweetReadTags(tweet);
+      }
+
       return { success: true, action: "unlike" };
     } else {
       await prisma.like.create({
@@ -215,12 +227,20 @@ export async function likeTweet(tweetId: string) {
           id: tweetId,
         },
         select: {
+          id: true,
           authorId: true,
+          parentId: true,
+          author: {
+            select: {
+              username: true,
+            },
+          },
         },
       });
 
       if (tweet) {
         await createNotification("LIKE", tweet.authorId, user.id, tweetId);
+        updateTweetReadTags(tweet);
       }
 
       return { success: true, action: "like" };
@@ -245,11 +265,30 @@ export async function retweetTweet(tweetId: string) {
     });
 
     if (existingRetweet) {
+      const tweet = await prisma.tweet.findUnique({
+        where: {
+          id: tweetId,
+        },
+        select: {
+          id: true,
+          parentId: true,
+          author: {
+            select: {
+              username: true,
+            },
+          },
+        },
+      });
+
       await prisma.retweet.delete({
         where: {
           id: existingRetweet.id,
         },
       });
+
+      if (tweet) {
+        updateTweetReadTags(tweet);
+      }
 
       revalidatePath("/");
       revalidatePath(`/tweet/${tweetId}`);
@@ -272,101 +311,25 @@ export async function retweetTweet(tweetId: string) {
         id: tweetId,
       },
       select: {
+        id: true,
         authorId: true,
+        parentId: true,
+        author: {
+          select: {
+            username: true,
+          },
+        },
       },
     });
 
     if (tweet) {
       await createNotification("RETWEET", tweet.authorId, user.id, tweetId);
+      updateTweetReadTags(tweet);
     }
 
     return { success: true, action: "retweet" };
   } catch (error) {
     console.log("Error retweeting tweet", error);
     return { success: false, error: "Failed to retweet" };
-  }
-}
-
-export async function getTweetReplies(tweetId: string) {
-  try {
-    const replies = await prisma.tweet.findMany({
-      where: {
-        parentId: tweetId,
-      },
-      include: {
-        author: {
-          select: {
-            id: true,
-            name: true,
-            username: true,
-            avatar: true,
-          },
-        },
-        _count: {
-          select: {
-            replies: true,
-          },
-        },
-        likes: {
-          select: {
-            id: true,
-            userId: true,
-          },
-        },
-        retweets: {
-          select: {
-            id: true,
-            userId: true,
-          },
-        },
-      },
-    });
-
-    return { success: true, replies };
-  } catch (error) {
-    console.log("Error getting tweet replies", error);
-    return { success: false, error: "Failed to fetch tweet replies" };
-  }
-}
-
-export async function getTweets() {
-  try {
-    const tweets = await prisma.tweet.findMany({
-      include: {
-        author: {
-          select: {
-            id: true,
-            name: true,
-            username: true,
-            avatar: true,
-          },
-        },
-        _count: {
-          select: {
-            replies: true,
-          },
-        },
-        likes: {
-          select: {
-            id: true,
-            userId: true,
-          },
-        },
-        retweets: {
-          select: {
-            id: true,
-            userId: true,
-          },
-        },
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
-
-    return { success: true, tweets };
-  } catch (error) {
-    console.log("Error fetching tweets", error);
-    return { success: false, error: "Failed to fetch tweets" };
   }
 }

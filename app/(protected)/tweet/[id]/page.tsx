@@ -1,6 +1,6 @@
 import TweetDetails from "@/components/tweets/TweetDetails";
-import { getTweetById, getTweetReplies } from "@/lib/actions/tweets";
 import { requireUser } from "@/lib/auth/require-user";
+import { getTweetById, getTweetReplies } from "@/lib/data/tweets";
 import { redirect } from "next/navigation";
 
 export default async function TweetPage({
