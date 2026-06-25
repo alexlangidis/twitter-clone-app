@@ -48,12 +48,20 @@ export default function SignUp() {
     setError("");
 
     try {
-      await signUpWithEmail(
+      const result = await signUpWithEmail(
         formData.email,
         formData.password,
         formData.name,
         formData.username,
       );
+
+      if (result.success) {
+        router.push("/");
+        router.refresh();
+        return;
+      }
+
+      setError(result.error ?? "Unable to sign up");
     } catch (error) {
       setError(error instanceof Error ? error.message : "Unable to sign up");
     } finally {

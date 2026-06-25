@@ -132,7 +132,7 @@ export default function Tweet({ tweet, currentUserId }: TweetProps) {
                 </Link>
               )}
               <span className="text-muted-foreground">.</span>
-              <span className="text-muted-foreground">
+              <span className="text-muted-foreground" suppressHydrationWarning>
                 {formatTimeAgo(tweet.createdAt)}
               </span>
             </div>

@@ -40,7 +40,15 @@ export default function SignUp() {
     setError("");
 
     try {
-      await signInWithEmail(formData.email, formData.password);
+      const result = await signInWithEmail(formData.email, formData.password);
+
+      if (result.success) {
+        router.push("/");
+        router.refresh();
+        return;
+      }
+
+      setError(result.error ?? "Unable to sign in");
     } catch (error) {
       setError(error instanceof Error ? error.message : "Unable to sign in");
     } finally {

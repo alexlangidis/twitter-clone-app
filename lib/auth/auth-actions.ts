@@ -5,15 +5,24 @@ import { auth } from "../auth";
 import { headers } from "next/headers";
 
 export async function signInWithEmail(email: string, password: string) {
-  const result = await auth.api.signInEmail({
-    body: {
-      email,
-      password,
-    },
-  });
+  try {
+    const result = await auth.api.signInEmail({
+      body: {
+        email,
+        password,
+      },
+    });
 
-  if (result.user) {
-    redirect("/");
+    if (result.user) {
+      return { success: true };
+    }
+
+    return { success: false, error: "Invalid email or password" };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unable to sign in",
+    };
   }
 }
 
@@ -23,17 +32,26 @@ export async function signUpWithEmail(
   name: string,
   username: string,
 ) {
-  const result = await auth.api.signUpEmail({
-    body: {
-      email,
-      password,
-      name,
-      username,
-    },
-  });
+  try {
+    const result = await auth.api.signUpEmail({
+      body: {
+        email,
+        password,
+        name,
+        username,
+      },
+    });
 
-  if (result.user) {
-    redirect("/");
+    if (result.user) {
+      return { success: true };
+    }
+
+    return { success: false, error: "Unable to sign up" };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unable to sign up",
+    };
   }
 }
 

@@ -8,6 +8,7 @@ import { revalidatePath } from "next/cache";
 import { getSession } from "../auth/auth-actions";
 import { prisma } from "../prisma";
 import { requireUser } from "../auth/require-user";
+import { createNotification } from "./notification";
 
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
 const ALLOWED_IMAGE_TYPES = [
@@ -114,6 +115,19 @@ export async function createReply(parentId: string, formData: FormData) {
     revalidatePath("/");
     revalidatePath(`/tweet/${parentId}`);
 
+    const originalTweet = await prisma.tweet.findUnique({
+      where: {
+        id: parentId,
+      },
+      select: {
+        authorId: true,
+      },
+    });
+
+    if (originalTweet) {
+      await createNotification("REPLY", originalTweet.authorId, session.user.id, parentId);
+    }
+
     return { success: true, tweet: reply };
   } catch (error) {
     console.log("Error creating reply", error);
@@ -193,6 +207,22 @@ export async function likeTweet(tweetId: string) {
           tweetId,
         },
       });
+
+      //create notification
+
+      const tweet = await prisma.tweet.findUnique({
+        where: {
+          id: tweetId,
+        },
+        select: {
+          authorId: true,
+        },
+      });
+
+      if (tweet) {
+        await createNotification("LIKE", tweet.authorId, user.id, tweetId);
+      }
+
       return { success: true, action: "like" };
     }
   } catch (error) {
@@ -236,6 +266,19 @@ export async function retweetTweet(tweetId: string) {
 
     revalidatePath("/");
     revalidatePath(`/tweet/${tweetId}`);
+
+    const tweet = await prisma.tweet.findUnique({
+      where: {
+        id: tweetId,
+      },
+      select: {
+        authorId: true,
+      },
+    });
+
+    if (tweet) {
+      await createNotification("RETWEET", tweet.authorId, user.id, tweetId);
+    }
 
     return { success: true, action: "retweet" };
   } catch (error) {

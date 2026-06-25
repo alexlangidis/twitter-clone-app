@@ -1,14 +1,17 @@
 "use client";
 import { authClient } from "@/lib/auth/auth-client";
+import { signOut } from "@/lib/auth/auth-actions";
 import { HomeIcon, LogOutIcon, MoreHorizontal, User } from "lucide-react";
 import Link from "next/link";
 import { Button } from "./ui/button";
 import { usePathname } from "next/navigation";
-import NotificationBadge from "./notifications/NotificationBadge";
+import { NotificationBadge } from "./notifications/NotificationBadge";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { useEffect, useRef, useState } from "react";
 
 function getNavigation(username?: string) {
+  const profileHref = username ? `/profile/${username}` : "/profile";
+
   return [
     {
       name: "Home",
@@ -22,7 +25,7 @@ function getNavigation(username?: string) {
     },
     {
       name: "Profile",
-      href: `/profile/${username}`,
+      href: profileHref,
       icon: User,
     },
   ];
@@ -93,7 +96,7 @@ export default function Sidebar() {
       <div className="p-4 border-t border-border">
         <div className="flex items-center space-x-3 p-3 rounded-full hover:bg-muted">
           <Link
-            href={`/profile/${username}`}
+            href={username ? `/profile/${username}` : "/profile"}
             className="flex items-center space-x-3 flex-1 min-w-0"
           >
             <Avatar className="h-10 w-10">
@@ -122,13 +125,16 @@ export default function Sidebar() {
 
             {isDropdownOpen && (
               <div className="absolute bottom-full left-0 mb-2 w-48 bg-background border border-border rounded-lg shadow-lg z-50">
-                <Button
-                  variant={"ghost"}
-                  className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-muted/50 flex items-center space-x-2"
-                >
-                  <LogOutIcon />
-                  <span> Log Out</span>
-                </Button>
+                <form action={signOut}>
+                  <Button
+                    type="submit"
+                    variant={"ghost"}
+                    className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-muted/50 flex items-center space-x-2"
+                  >
+                    <LogOutIcon />
+                    <span> Log Out</span>
+                  </Button>
+                </form>
               </div>
             )}
           </div>

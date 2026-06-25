@@ -5,6 +5,7 @@ import { mkdir, writeFile } from "fs/promises";
 import { revalidatePath } from "next/cache";
 import path from "path";
 import { requireUser } from "../auth/require-user";
+import { createNotification } from "./notification";
 import { prisma } from "../prisma";
 
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
@@ -281,6 +282,8 @@ export async function toggleFollow(targetUserId: string) {
     if (targetUser.username) {
       revalidatePath(`/profile/${targetUser.username}`);
     }
+
+    await createNotification("FOLLOW", targetUserId, user.id);
 
     return { success: true, action: "follow" };
   } catch (error) {
